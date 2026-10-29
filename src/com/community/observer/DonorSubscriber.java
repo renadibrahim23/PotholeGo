@@ -9,6 +9,12 @@ public class DonorSubscriber implements Subscriber{
     private Campaign campaign;
     private NotificationSender sender;
 
+    public DonorSubscriber(User donor, Campaign campaign, NotificationSender sender) {
+        this.donor = donor;
+        this.campaign = campaign;
+        this.sender = sender;
+    }
+
     @Override
     public void update() {
         String msg = String.format(

@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { api } from '../api.js'
 import { ProgressBar, Receipt } from '../components.jsx'
 
-const EMPTY = { type: 'Online', amount: '', checkNumber: '', bankName: '', itemName: '', quantity: '' }
+const EMPTY = { type: 'Online', amount: '', checkNumber: '', bankName: '', itemName: '', quantity: '' ,
+  paymentMethod: 'card', message: '', taxDeductible: false, }
 
 export default function Campaigns({ user, onLogin }) {
   const [campaigns, setCampaigns] = useState([])
@@ -58,6 +59,9 @@ function DonateForm({ campaign, onClose, onDone }) {
         bankName: form.bankName,
         itemName: form.itemName,
         quantity: form.quantity === '' ? null : Number(form.quantity),
+        paymentMethod: form.type === 'Online' ? form.paymentMethod : null,
+        message: form.message,
+        taxDeductible: form.taxDeductible,
       })
       onDone()
       setReceipt(res.receipt)
@@ -74,31 +78,54 @@ function DonateForm({ campaign, onClose, onDone }) {
         <h2>Donate to “{campaign.title}”</h2>
         <div className="segmented">
           {['Online', 'Check', 'InKind'].map((t) => (
-            <button
-              type="button"
-              key={t}
-              className={form.type === t ? 'seg active' : 'seg'}
-              onClick={() => setForm({ ...form, type: t })}
-            >
-              {t === 'InKind' ? 'In-kind' : t}
-            </button>
+              <button
+                  type="button"
+                  key={t}
+                  className={form.type === t ? 'seg active' : 'seg'}
+                  onClick={() => setForm({...form, type: t})}
+              >
+                {t === 'InKind' ? 'In-kind' : t}
+              </button>
           ))}
         </div>
         {form.type !== 'InKind' && (
-          <label>Amount (EGP)<input type="number" min="1" step="any" value={form.amount} onChange={set('amount')} required /></label>
+            <label>Amount (EGP)<input type="number" min="1" step="any" value={form.amount} onChange={set('amount')}
+                                      required/></label>
+        )}
+        {form.type === 'Online' && (
+            <label>Payment method
+              <select value={form.paymentMethod} onChange={set('paymentMethod')}>
+                <option value="card">Card</option>
+                <option value="wallet">Mobile wallet</option>
+                <option value="bank">Bank transfer</option>
+              </select>
+            </label>
         )}
         {form.type === 'Check' && (
-          <div className="two">
-            <label>Check number<input value={form.checkNumber} onChange={set('checkNumber')} required /></label>
-            <label>Bank<input value={form.bankName} onChange={set('bankName')} required /></label>
-          </div>
+            <div className="two">
+              <label>Check number<input value={form.checkNumber} onChange={set('checkNumber')} required/></label>
+              <label>Bank<input value={form.bankName} onChange={set('bankName')} required/></label>
+            </div>
         )}
         {form.type === 'InKind' && (
-          <div className="two">
-            <label>Item<input value={form.itemName} onChange={set('itemName')} placeholder="e.g. Asphalt bags" required /></label>
-            <label>Quantity<input type="number" min="1" value={form.quantity} onChange={set('quantity')} required /></label>
-          </div>
+            <div className="two">
+              <label>Item<input value={form.itemName} onChange={set('itemName')} placeholder="e.g. Asphalt bags"
+                                required/></label>
+              <label>Quantity<input type="number" min="1" value={form.quantity} onChange={set('quantity')}
+                                    required/></label>
+            </div>
         )}
+        <label>Message on receipt (optional)
+          <input value={form.message} onChange={set('message')} placeholder="e.g. In memory of Grandpa"/>
+        </label>
+        <label>
+          <input
+              type="checkbox"
+              checked={form.taxDeductible}
+              onChange={(e) => setForm({...form, taxDeductible: e.target.checked})}
+          />
+          {' '}Mark as tax deductible
+        </label>
         {error && <div className="error">{error}</div>}
         <div className="row-end">
           <button type="button" onClick={onClose}>Cancel</button>

@@ -1,9 +1,10 @@
 package com.community.observer;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class CampaignPublisher implements Publisher{
-    private List<Subscriber> donors;
+    private List<Subscriber> donors = new ArrayList<>();
 
     @Override 
     public void subscribe(Subscriber s){

@@ -7,6 +7,7 @@ export default function AdminPanel({ user }) {
   const [users, setUsers] = useState([])
   const [error, setError] = useState('')
   const [editing, setEditing] = useState(null) // null, 'new', or a campaign
+    const [notes, setNotes] = useState({ channel: 'Email', entries: [] })
 
   const load = () =>
     Promise.all([api.statistics(), api.users()])
@@ -109,7 +110,36 @@ export default function AdminPanel({ user }) {
           </tbody>
         </table>
       </div>
-
+        <div className="section-head">
+            <h2>Notifications</h2>
+            <div>
+                <label style={{ display: 'inline-block', marginRight: '0.5rem' }}>
+                    Channel{' '}
+                    <select value={notes.channel} onChange={(e) => run(api.setChannel(e.target.value))}>
+                        <option>Email</option>
+                        <option>SMS</option>
+                        <option>Push</option>
+                    </select>
+                </label>
+                <button onClick={load}>Refresh</button>
+            </div>
+        </div>
+        {notes.entries.length === 0 ? (
+            <p className="muted">No notifications sent yet. They are sent to donors after each donation.</p>
+        ) : (
+            <div className="table-wrap">
+                <table>
+                    <thead>
+                    <tr><th>Notification log (newest first)</th></tr>
+                    </thead>
+                    <tbody>
+                    {notes.entries.slice(0, 30).map((n, i) => (
+                        <tr key={i}><td>{n}</td></tr>
+                    ))}
+                    </tbody>
+                </table>
+            </div>
+        )}
       {editing && (
         <CampaignForm
           campaign={editing === 'new' ? null : editing}

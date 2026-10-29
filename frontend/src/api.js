@@ -44,6 +44,10 @@ export const api = {
   removeDonation: (id) => request('DELETE', `/api/admin/donations/${id}`),
   users: () => request('GET', '/api/admin/users'),
   changeRole: (id, role) => request('PUT', `/api/admin/users/${id}/role`, { role }),
+
+  // NotificationController (admin)
+  notifications: () => request('GET', '/api/notifications'),
+  setChannel: (channel) => request('PUT', '/api/notifications/channel', { channel }),
 }
 
 export const egp = (n) =>

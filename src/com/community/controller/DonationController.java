@@ -1,11 +1,13 @@
 package com.community.controller;
 
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
+import com.community.observer.CampaignPublisher;
+import com.community.observer.DonorSubscriber;
+import com.community.strategy.notification.NotificationSender;
+import com.community.model.donation.decorator.GiftMessageDecorator;
+import com.community.model.donation.decorator.TaxDeductibleDecorator;
+import com.community.strategy.payment.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,17 +43,26 @@ public class DonationController {
             "check", new CheckDonationCreator()::createDonation,
             "inkind", new InkindDonationCreator());
 
+    // Strategy: how an online donation is paid (request field "paymentMethod")
+    private static final Map<String, PaymentStrategy> PAYMENTS = Map.of(
+            "card", new CardPaymentStrategy(),
+            "wallet", new WalletPaymentStrategy(),
+            "bank", new BankTransferPaymentStrategy());
+
+
     private final CampaignRepository campaigns;
     private final DonationRepository repo;
     private final UserRepository users;
     private final DonationView view;
+    private final NotificationSender sender;
 
     public DonationController(CampaignRepository campaigns, DonationRepository repo, UserRepository users,
-            DonationView view) {
+            DonationView view, NotificationSender sender) {
         this.campaigns = campaigns;
         this.repo = repo;
         this.users = users;
         this.view = view;
+        this.sender=sender;
     }
 
     public record DonationRequest(
@@ -62,7 +73,10 @@ public class DonationController {
             String checkNumber,
             String bankName,
             String itemName,
-            Integer quantity) {
+            Integer quantity,
+            String paymentMethod,
+            String message,
+            Boolean taxDeductible){
     }
 
     public record DonationResult(DonationSummary donation, String receipt) {
@@ -105,11 +119,17 @@ public class DonationController {
         switch (type) {
             case "online" -> {
                 requireAmount(req);
-                // no real payment yet: the PaymentProcessor strategy will supply this
-                String txn = req.transactionId() == null || req.transactionId().isBlank()
-                        ? "TXN-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase()
-                        : req.transactionId().trim();
-                data.put("transactionId", txn);
+                String method = req.paymentMethod() == null || req.paymentMethod().isBlank()
+                        ? "card" : req.paymentMethod().trim().toLowerCase();
+                PaymentStrategy strategy = PAYMENTS.get(method);
+                if (strategy == null) {
+                    throw badRequest("Payment method must be Card, Wallet or Bank");
+                }
+                PaymentResult paid = new PaymentProcessor(strategy).process(donor, req.amount());
+                if (!paid.success()) {
+                    throw badRequest(paid.message());
+                }
+                data.put("transactionId", paid.transactionId());
                 data.put("amount", req.amount());
             }
             case "check" -> {
@@ -133,8 +153,8 @@ public class DonationController {
         }
         campaign.addDonation(donation);
         repo.save(donation);
-        // TODO: notify subscribers through CampaignPublisher once it is fixed
-        return new DonationResult(DonationSummary.from(donation), donation.generateReceipt());
+        notifyDonors(campaign);
+        return new DonationResult(DonationSummary.from(donation), decorate(donation, req).generateReceipt());
     }
 
     @GetMapping("/donations/history")
@@ -149,6 +169,34 @@ public class DonationController {
                 .filter(d -> d.getDonor().getId() == u.getId())
                 .sorted(Comparator.comparingInt(Donation::getId).reversed())
                 .toList();
+    }
+
+    // Observer: tell every donor of the campaign how it is doing. A failed
+    // notification must never undo a donation that is already saved.
+    private void notifyDonors(Campaign campaign) {
+        try {
+            CampaignPublisher publisher = new CampaignPublisher();
+            Set<Integer> seen = new HashSet<>();
+            for (Donation d : campaign.getDonations()) {
+                if (seen.add(d.getDonor().getId())) {
+                    publisher.subscribe(new DonorSubscriber(d.getDonor(), campaign, sender));
+                }
+            }
+            publisher.notifyDonors();
+        } catch (RuntimeException e) {
+            System.err.println("Notification failed: " + e.getMessage());
+        }
+    }
+    // Decorator: optional extras printed on the receipt
+    private static Donation decorate(Donation d, DonationRequest req) {
+        Donation result = d;
+        if (req.message() != null && !req.message().isBlank()) {
+            result = new GiftMessageDecorator(result, req.message().trim());
+        }
+        if (Boolean.TRUE.equals(req.taxDeductible())) {
+            result = new TaxDeductibleDecorator(result);
+        }
+        return result;
     }
 
     private static void requireAmount(DonationRequest req) {
