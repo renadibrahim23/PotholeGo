@@ -3,7 +3,7 @@ import { api } from '../api.js'
 import { ProgressBar, Receipt } from '../components.jsx'
 
 const EMPTY = { type: 'Online', amount: '', checkNumber: '', bankName: '', itemName: '', quantity: '' ,
-  paymentMethod: 'card', message: '', taxDeductible: false, }
+  paymentMethod: 'card', message: '', anonymous: false, }
 
 export default function Campaigns({ user, onLogin }) {
   const [campaigns, setCampaigns] = useState([])
@@ -61,7 +61,7 @@ function DonateForm({ campaign, onClose, onDone }) {
         quantity: form.quantity === '' ? null : Number(form.quantity),
         paymentMethod: form.type === 'Online' ? form.paymentMethod : null,
         message: form.message,
-        taxDeductible: form.taxDeductible,
+        anonymous: form.anonymous,
       })
       onDone()
       setReceipt(res.receipt)
@@ -121,10 +121,10 @@ function DonateForm({ campaign, onClose, onDone }) {
         <label>
           <input
               type="checkbox"
-              checked={form.taxDeductible}
-              onChange={(e) => setForm({...form, taxDeductible: e.target.checked})}
+              checked={form.anonymous}
+              onChange={(e) => setForm({ ...form, anonymous: e.target.checked })}
           />
-          {' '}Mark as tax deductible
+          {' '}Donate anonymously (hides my name on the receipt)
         </label>
         {error && <div className="error">{error}</div>}
         <div className="row-end">

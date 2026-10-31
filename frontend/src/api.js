@@ -34,6 +34,7 @@ export const api = {
   // UserPanelController
   myDonations: () => request('GET', '/api/user/donations'),
   receipt: (id) => request('GET', `/api/user/donations/${id}/receipt`),
+  taxStatement: (year) => request('GET', `/api/user/tax-statement?year=${year}`),
   editProfile: (p) => request('PUT', '/api/user/profile', p),
 
   // AdminPanelController

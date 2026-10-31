@@ -1,5 +1,6 @@
 package com.community.controller;
 
+import java.time.LocalDate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.community.model.donation.Donation;
@@ -56,6 +58,14 @@ public class UserPanelController {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "This is not your donation");
         }
         return d.generateReceipt();
+    }
+
+    // annual tax statement (plain text); defaults to the current year
+    @GetMapping(value = "/tax-statement", produces = MediaType.TEXT_PLAIN_VALUE)
+    public String taxStatement(@RequestParam(required = false) Integer year, HttpSession session) {
+        User u = AuthController.requireUser(session, users);
+        int y = year == null ? LocalDate.now().getYear() : year;
+        return dashboardView.taxStatement(u, y, donations.history(u));
     }
 
     @PutMapping("/profile")

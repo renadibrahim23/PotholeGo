@@ -6,7 +6,7 @@ import com.community.observer.CampaignPublisher;
 import com.community.observer.DonorSubscriber;
 import com.community.strategy.notification.NotificationSender;
 import com.community.model.donation.decorator.GiftMessageDecorator;
-import com.community.model.donation.decorator.TaxDeductibleDecorator;
+import com.community.model.donation.decorator.AnonymousDonationDecorator;
 import com.community.strategy.payment.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -76,7 +76,7 @@ public class DonationController {
             Integer quantity,
             String paymentMethod,
             String message,
-            Boolean taxDeductible){
+            Boolean anonymous){
     }
 
     public record DonationResult(DonationSummary donation, String receipt) {
@@ -193,8 +193,8 @@ public class DonationController {
         if (req.message() != null && !req.message().isBlank()) {
             result = new GiftMessageDecorator(result, req.message().trim());
         }
-        if (Boolean.TRUE.equals(req.taxDeductible())) {
-            result = new TaxDeductibleDecorator(result);
+        if (Boolean.TRUE.equals(req.anonymous())) {
+            result = new AnonymousDonationDecorator(result);
         }
         return result;
     }
